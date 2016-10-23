@@ -30,7 +30,7 @@ router.route('/')
         }, function (err, survivor) {
               if (err) {
                   res.status(400);
-                  res.json({message: "There was a problem adding the information to the database: " + err});
+                  res.json({message: "The server couldn't save your request. " + err});
               } else {
                   console.log('POST creating new survivor: ' + survivor.name);
                   res.json(survivor);
@@ -46,11 +46,11 @@ router.param('id', function(req, res, next, id) {
         //if it isn't found, we are going to repond with 404
         if (err) {
             console.log('Id: ' + id + ' was not found');
-            res.status(404)
-            res.json({message: 'Not found'});
+            res.status(404);
+            res.json({message: 'Survivor Not found'});
         } else {
             //Once validation is done save the new item in the req and go ahead
-            req.id = id;
+            req.survivor = survivor;
             next();
         }
     });
@@ -58,45 +58,85 @@ router.param('id', function(req, res, next, id) {
 
 router.route('/:id')
     .get(function(req, res) {
-        mongoose.model('Survivor').findById(req.id, function (err, survivor) {
-            if (err) {
-                console.log('GET Error: There was a problem retrieving: ' + err);
-            } else {
-                console.log('GET Retrieving ID: ' + survivor._id);
-                res.json(survivor);
-            }
-        });
+        console.log('GET Retrieving ID: ' + req.survivor._id);
+        res.json(req.survivor);
     })
     .patch(function(req, res) {
-        mongoose.model('Survivor').findById(req.id, function (err, survivor) {
-            survivor.latitude = req.body.latitude;
-	        survivor.longitude = req.body.longitude;
-            survivor.save(function (err) {
-                if (err) {
-                    res.status(400);
-                    res.json({message: "There was a problem updating the information to the database: " + err});
-                } else {
-                    res.json(survivor);
-                }
-            });
+        req.survivor.latitude = req.body.latitude;
+	    req.survivor.longitude = req.body.longitude;
+        req.survivor.save(function (err) {
+            if (err) {
+                res.status(400);
+                res.json({message: "The server couldn't save your request. " + err});
+            } else {
+                res.json(req.survivor);
+            }
         });
     });
     
-router.post('/:id/report_contamination', function(req, res) {
-    mongoose.model('Survivor').findById(req.id, function (err, survivor) {
-        if(survivor != null){
-            survivor.contamination_counter++;
-            survivor.save(function (err) {
-                if (err) {
-                    res.status(400);
-                    res.json({ message: "There was a problem trying to report the contamination: " + err });
-                } else{
-                    res.json({ message: "Contamination registered successfully!" });
-                }
-            });
+router.post('/report_contamination', function(req, res, next) {
+    
+    if(req.body.reportee_id == req.body.reporter_id) {
+        res.status(400);
+        return res.json({message: "The server could not process your request."});
+    }
+    
+    mongoose.model('Survivor').findById(req.body.reporter_id, function (err, reporter) {
+        if(err || reporter == null) {
+            res.status(400);
+            res.json({message: "The server could not process your request. Reporter not found."});
         } else {
-            res.send(err);
-        } 
+            req.reporter = reporter;
+            next();
+        }
+    });
+}, function(req, res, next) {
+    mongoose.model('Survivor').findById(req.body.reportee_id, function (err, reportee) {
+        if(err || reportee == null) {
+            res.status(400);
+            res.json({message: "The server could not process your request. Reportee not found."});
+        } else {
+            req.reportee = reportee;
+            next();
+        }
+    });
+}, function(req, res, next) {
+    mongoose.model('Contamination').findOne(
+        { reporter_id: req.reporter._id, reportee_id: req.reportee._id }, function (err, contamination) {
+            if(contamination) {
+                res.status(400);
+                res.json({message: "You cannot register a contamination twice."});
+            } else {
+                next();
+            }
+        });
+}, function(req, res){
+    mongoose.model('Contamination').create({
+        reporter_id : req.reporter._id,
+        reportee_id : req.reportee._id,
+    }, function (err, contamination) {
+        if (err) {
+            res.status(400);
+            res.json({message: "The server couldn't save your request. " + err});
+        } else {
+            console.log('POST creating new contamination.');
+            mongoose.model('Survivor').findById(contamination.reportee_id, function(err, reportee){
+
+                reportee.contamination_counter++;
+                if(reportee.contamination_counter >= 3) {
+                    reportee.isInfected = true;
+                }
+
+                reportee.save(function(err, reporteeID){
+                    if(err){
+                        res.status(400);
+                        res.json({ message: "The server could'n save your request. " + err });
+                    } else {
+                        res.json({message: "Contamination reported successfully"});
+                    }
+                });
+            });
+        }
     });
 });
 
