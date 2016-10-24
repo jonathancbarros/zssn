@@ -3,13 +3,15 @@ var express = require('express'),
     mongoose = require('mongoose'),
     bodyParser = require('body-parser');
 
+var Survivor = mongoose.model('Survivor');
+
 router.use(bodyParser.urlencoded({ extended: true }));
 
 //Build the REST operations at the base for survivors
 //This will be accessible from http://127.0.0.1:3000/survivors if the default route for / is left unchanged
 router.route('/')
     //GET all survivors
-    .get(function(req, res, next) {
+    .get(function(req, res) {
         mongoose.model('Survivor').find({}, function (err, survivors) {
             if (err) {
                 console.error(err);
@@ -19,31 +21,34 @@ router.route('/')
         });
     })
     .post(function(req, res) {
-        // Get values from POST request.
-        mongoose.model('Survivor').create({
+        var survivor = new Survivor({
             name :      req.body.name,
             age :       req.body.age,
             gender :    req.body.gender,
             latitude :  req.body.latitude,
             longitude : req.body.longitude,
-            resources : req.body.resources
-        }, function (err, survivor) {
-              if (err) {
+            water:      { amount : isNaN(req.body.water)      ? 0 : req.body.water },
+            food:       { amount : isNaN(req.body.food)       ? 0 : req.body.food },
+            medication: { amount : isNaN(req.body.medication) ? 0 : req.body.medication },
+            ammunition: { amount : isNaN(req.body.ammunition) ? 0 : req.body.ammunition },
+        });
+        survivor.assignPoints();
+        survivor.save(function(err){
+            if (err) {
                   res.status(400);
                   res.json({message: "The server couldn't save your request. " + err});
               } else {
-                  console.log('POST creating new survivor: ' + survivor.name);
+                  console.log('POST creating new survivor: ' + survivor);
                   res.json(survivor);
               }
-        })
+        });
     });
 
 // Route middleware to validate :id
 router.param('id', function(req, res, next, id) {
-    //console.log('validating ' + id + ' exists');
-    //find the ID in the Database
+    //Find the ID in the Database
     mongoose.model('Survivor').findById(id, function (err, survivor) {
-        //if it isn't found, we are going to repond with 404
+        //If it isn't found, we are going to repond with 404
         if (err) {
             console.log('Id: ' + id + ' was not found');
             res.status(404);
@@ -58,12 +63,12 @@ router.param('id', function(req, res, next, id) {
 
 router.route('/:id')
     .get(function(req, res) {
-        console.log('GET Retrieving ID: ' + req.survivor._id);
+        console.log('GET Retrieving ID: ' + req.survivor);
         res.json(req.survivor);
     })
     .patch(function(req, res) {
         req.survivor.latitude = req.body.latitude;
-	    req.survivor.longitude = req.body.longitude;
+        req.survivor.longitude = req.body.longitude;
         req.survivor.save(function (err) {
             if (err) {
                 res.status(400);
@@ -76,6 +81,8 @@ router.route('/:id')
     
 router.post('/report_contamination', function(req, res, next) {
     
+    //Two scenarios here: If both request parameters are null or blank, it will return a 400 response
+    //The same happens when the reporter and reporter are the same
     if(req.body.reportee_id == req.body.reporter_id) {
         res.status(400);
         return res.json({message: "The server could not process your request."});
@@ -113,7 +120,7 @@ router.post('/report_contamination', function(req, res, next) {
 }, function(req, res){
     mongoose.model('Contamination').create({
         reporter_id : req.reporter._id,
-        reportee_id : req.reportee._id,
+        reportee_id : req.reportee._id
     }, function (err, contamination) {
         if (err) {
             res.status(400);
