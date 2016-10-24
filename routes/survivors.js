@@ -52,7 +52,7 @@ router.param('id', function(req, res, next, id) {
         if (err) {
             console.log('Id: ' + id + ' was not found');
             res.status(404);
-            res.json({message: 'Survivor Not found'});
+            res.json({message: 'Survivor Not Found'});
         } else {
             //Once validation is done save the new item in the req and go ahead
             req.survivor = survivor;
@@ -85,12 +85,12 @@ router.post('/report_contamination', function(req, res, next) {
     //The same happens when the reporter and reporter are the same
     if(req.body.reportee_id == req.body.reporter_id) {
         res.status(400);
-        return res.json({message: "You cannot report yourself as infected."});
+        return res.json({message: "You can't report yourself as infected."});
     }
     
     mongoose.model('Survivor').findById(req.body.reporter_id, function (err, reporter) {
         if(err || reporter == null) {
-            res.status(400);
+            res.status(404);
             res.json({message: "The server could not process your request. Reporter not found."});
         } else {
             req.reporter = reporter;
@@ -100,7 +100,7 @@ router.post('/report_contamination', function(req, res, next) {
 }, function(req, res, next) {
     mongoose.model('Survivor').findById(req.body.reportee_id, function (err, reportee) {
         if(err || reportee == null) {
-            res.status(400);
+            res.status(404);
             res.json({message: "The server could not process your request. Reportee not found."});
         } else {
             req.reportee = reportee;
@@ -112,7 +112,7 @@ router.post('/report_contamination', function(req, res, next) {
         { reporter_id: req.reporter._id, reportee_id: req.reportee._id }, function (err, contamination) {
             if(contamination) {
                 res.status(400);
-                res.json({message: "You cannot register a contamination twice."});
+                res.json({message: "You can't report the same survivor twice."});
             } else {
                 next();
             }

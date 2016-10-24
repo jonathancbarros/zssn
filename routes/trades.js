@@ -14,8 +14,10 @@ function checkTrader(trader_id, trade_resources, res, next) {
             res.status(404);
             res.json({message: "Trader id: " + trader_id +" wasn't found."});
         } else if(trader.isInfected) {
+            res.status(400);
             res.json({message: trader.name + " is infected, so this operation cannot be completed."});
         } else if(!trader.checkTradingResources(trade_resources)){
+            res.status(400);
              res.json({message: trader.name + " does not have enough resource for this trade."});
         } else {
             next();
@@ -51,7 +53,7 @@ router.post('/', function(req, res, next){
     trade.validate(function (err) {
         if (err) {
             res.status(400);
-            res.json({message: "The server couldn't save your request. " + err});
+            res.json({message: "The server can't save your request. " + err});
         } else {
             req.trade = trade;
             next();
