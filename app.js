@@ -13,6 +13,7 @@ var trade = require('./models/trade');
 var routes = require('./routes/index');
 var survivors = require('./routes/survivors');
 var trades = require('./routes/trades');
+var reports = require('./routes/reports');
 
 var app = express();
 
@@ -31,6 +32,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', routes);
 app.use('/survivors', survivors);
 app.use('/trades', trades);
+app.use('/reports', reports);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

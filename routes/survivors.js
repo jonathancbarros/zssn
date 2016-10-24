@@ -85,7 +85,7 @@ router.post('/report_contamination', function(req, res, next) {
     //The same happens when the reporter and reporter are the same
     if(req.body.reportee_id == req.body.reporter_id) {
         res.status(400);
-        return res.json({message: "The server could not process your request."});
+        return res.json({message: "You cannot report yourself as infected."});
     }
     
     mongoose.model('Survivor').findById(req.body.reporter_id, function (err, reporter) {

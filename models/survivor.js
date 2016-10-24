@@ -40,11 +40,33 @@ const survivorSchema = new mongoose.Schema({
     ammunition: resourceAttributes
 });
 
+//A helper function that assigns the points accordingly to its rules
 survivorSchema.methods.assignPoints = function assignPoints() {
     this.water.points = 4 * this.water.amount;
     this.food.points = 3 * this.food.amount;
     this.medication.points = 2 * this.medication.amount;
     this.ammunition.points = 1 * this.ammunition.amount;
+};
+
+
+//It returns the average resources by each survivor
+survivorSchema.statics.getAverageResources = function getAverageResources(survivors) {
+    
+    var average = { water: 0, food: 0, medication: 0, ammunition: 0 };
+
+    survivors.forEach(function(survivor){
+        average.water += survivor.water.amount / survivors.length;
+        average.food += survivor.food.amount / survivors.length;
+        average.medication += survivor.medication.amount / survivors.length;
+        average.ammunition += survivor.ammunition.amount / survivors.length;
+    });
+
+    average.water = parseFloat(average.water.toFixed(2));
+    average.food = parseFloat(average.food.toFixed(2));
+    average.medication = parseFloat(average.medication.toFixed(2));
+    average.ammunition = parseFloat(average.ammunition.toFixed(2));
+
+    return average;
 };
 
 survivorSchema.methods.getTotalPoints = function getTotalPoints() {
@@ -74,6 +96,8 @@ survivorSchema.methods.checkTradingResources = function checkTradingResources(re
 
 survivorSchema.methods.performTrade = function performTrade(givenResources, receivedResouces) {
     
+    //TODO These two iterations and the one above could be replaced by some array function (find, findIndex, etc.):
+    
     // Iterates through the given resources and removes them from the current survivor
     givenResources.forEach(function(resource){
         if(resource['item'] == 'water') {
@@ -99,6 +123,6 @@ survivorSchema.methods.performTrade = function performTrade(givenResources, rece
             this.ammunition.amount += resource['amount']; 
         } 
     }, this);
-}
+};
 
 module.exports = mongoose.model('Survivor', survivorSchema);
